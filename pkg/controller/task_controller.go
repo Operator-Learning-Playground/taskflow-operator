@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"github.com/myoperator/cicdoperator/pkg/apis/task/v1alpha1"
+	"github.com/myoperator/cicdoperator/pkg/builder"
 	clientset "github.com/myoperator/cicdoperator/pkg/client/clientset/versioned"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
@@ -29,9 +30,18 @@ func (r *TaskController) Reconcile(ctx context.Context, req reconcile.Request) (
 	t := &v1alpha1.Task{}
 	err := r.Client.Get(ctx, req.NamespacedName, t)
 	if err != nil {
+		klog.Error("get task error: ", err)
 		return reconcile.Result{}, err
 	}
 
+	podBuilder := builder.NewPodBuilder(t, r.Client)
+	err = podBuilder.Build(ctx)
+	if err != nil {
+		klog.Error("create pod error: ", err)
+		return reconcile.Result{}, err
+	}
+
+	// 法二：可以使用生成的client端
 	//task, err := r.ApiV1alpha1().Tasks(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
 	//if err!=nil{
 	//	return reconcile.Result{}, err

@@ -35,14 +35,14 @@ func InitManager()  {
 		os.Exit(1)
 	}
 
-	// 3. 初始化使用code-gene
+	// 3. 初始化使用code-generator
 	taskClient := versioned.NewForConfigOrDie(K8sRestConfig())
-
+	// 4. 初始化 controller
 	taskController := controller.NewTaskController(
 		mgr.GetEventRecorderFor("cicd_task"),
 		taskClient,
 	)
-
+	// 5. 定义controller的管理对象等工作
 	if err = builder.ControllerManagedBy(mgr).
 		For(&taskv1alpha1.Task{}).
 		Complete(taskController);err != nil {
@@ -52,6 +52,7 @@ func InitManager()  {
 	}
 
 
+	// 6. 启动管理器
 	if err = mgr.Start(signals.SetupSignalHandler());err != nil {
 		mgr.GetLogger().Error(err, "unable to start manager")
 	}

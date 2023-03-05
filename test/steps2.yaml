@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: st
+  annotations:
+    taskorder: "2"
+spec:
+  restartPolicy: Never
+  containers:
+    - name: step1
+      image: busybox:1.28
+      imagePullPolicy: IfNotPresent
+      command: ["sh", "-c"]
+      args:
+        - while true; do
+          order=$(cat /etc/podinfo/order);
+          if [[ $order == "1" ]]; then
+          echo  "step1 is running"; break;fi;
+          sleep 5;
+          done;
+      volumeMounts:
+        - name: podinfo
+          mountPath: /etc/podinfo
+    - name: step2
+      image: busybox:1.28
+      imagePullPolicy: IfNotPresent
+      command: [ "sh", "-c" ]
+      args:
+        - while true; do
+          order=$(cat /etc/podinfo/order);
+          if [[ $order == "2" ]]; then
+          echo  "step2 is running";break; fi;
+          sleep 5;
+          done;
+      volumeMounts:
+        - name: podinfo
+          mountPath: /etc/podinfo
+  volumes:
+    - name: podinfo
+      downwardAPI:
+        items:
+          - path: "order"
+            fieldRef:
+              fieldPath: metadata.annotations['taskorder']

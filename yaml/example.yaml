@@ -1,10 +1,14 @@
 apiVersion: api.practice.com/v1alpha1
 kind: Task
 metadata:
-  name: mytask
+  name: mytask11
 spec:
   steps:
     - name: step1
-      image: xxxxoo
+      image: busybox:1.28
+      command: ["sh"]
+      args: ["-c", "echo step1"]
     - name: step2
-      image: xxxxoo
+      image: busybox:1.28
+      command: ["sj"]
+      args: ["-c", "echo step2"]
