@@ -1,0 +1,10 @@
+apiVersion: api.practice.com/v1alpha1
+kind: Task
+metadata:
+  name: mytask
+spec:
+  steps:
+    - name: step1
+      image: xxxxoo
+    - name: step2
+      image: xxxxoo
