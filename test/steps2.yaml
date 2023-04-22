@@ -36,7 +36,7 @@ spec:
         - name: podinfo
           mountPath: /etc/podinfo
   volumes:
-    - name: podinfo
+    - name: podinfo # 注入annotations来实现container的顺序
       downwardAPI:
         items:
           - path: "order"

@@ -22,7 +22,7 @@ spec:
           mountPath: /etc/podinfo
   volumes:
     - name: podinfo
-      downwardAPI:
+      downwardAPI: # 使用downwardAPI来注入到container
         items:
           - path: "annotations"
             fieldRef:

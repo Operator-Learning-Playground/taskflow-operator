@@ -6,7 +6,7 @@ metadata:
     taskorder: "0"
 spec:
   restartPolicy: Never
-  initContainers:
+  initContainers: # initContainer容器
     - name: stepx
       image: shenyisyn/entrypoint:v1
       imagePullPolicy: IfNotPresent
