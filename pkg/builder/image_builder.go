@@ -8,52 +8,46 @@ import (
 	"strings"
 )
 
-
 type ImageCommand struct {
 	Command []string // 对应docker 的entrypoint
-	Args []string    // 对应docker 的cmd
+	Args    []string // 对应docker 的cmd
 }
 
-
-func(ic *ImageCommand) String() string{
-	return fmt.Sprintf("Command是:%s,Args是:%s", strings.Join(ic.Command," "), strings.Join(ic.Args," "))
+func (ic *ImageCommand) String() string {
+	return fmt.Sprintf("Command是:%s,Args是:%s", strings.Join(ic.Command, " "), strings.Join(ic.Args, " "))
 }
-
 
 // Image
 type Image struct {
-	// image名称 ex: alpine:3.12
-	Name string
-	// 唯一的hash
-	Digest v1.Hash
-	//  map key ex: Linux/amd64
-	Command map[string]*ImageCommand
+	Ref     name.Reference           //增加了一个 。 缓存里直接用这个 作为key，更方便
+	Name    string                   // image名称 ex: alpine:3.12
+	Digest  v1.Hash                  // 唯一的hash
+	Command map[string]*ImageCommand //  map key ex: Linux/amd64
 }
 
-
-func(i *Image) AddCommand(os, arch string , cmds []string, args []string){
+func (i *Image) AddCommand(os, arch string, cmds []string, args []string) {
 	key := fmt.Sprintf("%s/%s", os, arch)
 
 	i.Command[key] = &ImageCommand{
 		Command: cmds,
-		Args: args,
+		Args:    args,
 	}
 }
 
-
 // NewImage 初始化函数
-func NewImage(name string ,digest v1.Hash) *Image{
-	return &Image {
-		Name: name,
-		Digest: digest,
+func NewImage(name string, digest v1.Hash, ref name.Reference) *Image {
+	return &Image{
+		Name:    name,
+		Digest:  digest,
+		Ref:	 ref,
 		Command: make(map[string]*ImageCommand),
 	}
 }
 
 // ParseImage 解析 image 镜像
-func ParseImage(img string) (*Image,error) {
+func ParseImage(img string) (*Image, error) {
 
-	ref, err := name.ParseReference(img)
+	ref, err := name.ParseReference(img, name.WeakValidation)
 	if err != nil {
 		return nil, err
 	}
@@ -63,10 +57,10 @@ func ParseImage(img string) (*Image,error) {
 		return nil, err
 	}
 
-	//初始化我们的业务 Image 对象
-	imgBuilder := NewImage(img, des.Digest)
-	//image 类型
-	if des.MediaType.IsImage(){
+	// 初始化我们的业务 Image 对象
+	imgBuilder := NewImage(img, des.Digest, ref)
+	// image 类型
+	if des.MediaType.IsImage() {
 		img, err := des.Image()
 		if err != nil {
 			return nil, err
@@ -78,7 +72,6 @@ func ParseImage(img string) (*Image,error) {
 		imgBuilder.AddCommand(conf.OS, conf.Architecture, conf.Config.Entrypoint, conf.Config.Cmd)
 		return imgBuilder, nil
 	}
-
 
 	//下方是 index 模式
 	idx, err := des.ImageIndex()
@@ -93,7 +86,7 @@ func ParseImage(img string) (*Image,error) {
 	for _, d := range mf.Manifests {
 		img, err := idx.Image(d.Digest)
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
 		conf, err := img.ConfigFile()
 		if err != nil {
@@ -102,6 +95,5 @@ func ParseImage(img string) (*Image,error) {
 		imgBuilder.AddCommand(conf.OS, conf.Architecture, conf.Config.Entrypoint, conf.Config.Cmd)
 		//fmt.Println(cf.OS,"/",cf.Architecture,":",cf.Config.Entrypoint,cf.Config.Cmd)
 	}
-	return  imgBuilder, nil
+	return imgBuilder, nil
 }
-

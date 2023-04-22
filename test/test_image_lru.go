@@ -15,14 +15,13 @@ func main() {
 	img3, _ := builder.ParseImage("mysql")
 
 	// 加入缓存
-	common.ImageCache.Add(img1.Digest.String(), img1)
-	common.ImageCache.Add(img2.Digest.String(), img2)
-	common.ImageCache.Add(img3.Digest.String(), img3)
+	common.ImageCache.Add(img1.Ref, img1)
+	common.ImageCache.Add(img2.Ref, img2)
+	common.ImageCache.Add(img3.Ref, img3)
 
-	for _, key := range common.ImageCache.Keys(){
-		v,_ := common.ImageCache.Get(key)
+	for _, key := range common.ImageCache.Keys() {
+		v, _ := common.ImageCache.Get(key)
 		fmt.Println(v.(*builder.Image).Name)
 	}
-
 
 }

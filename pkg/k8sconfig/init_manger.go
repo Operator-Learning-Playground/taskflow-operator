@@ -16,7 +16,7 @@ import (
 )
 
 //初始化 控制器管理器
-func InitManager()  {
+func InitManager() {
 
 	logf.SetLogger(zap.New())
 	// 1. 初始化管理器
@@ -25,7 +25,7 @@ func InitManager()  {
 			Logger: logf.Log.WithName("cicd_task"),
 		})
 	if err != nil {
-		log.Fatal("创建管理器失败:",err.Error())
+		log.Fatal("创建管理器失败:", err.Error())
 	}
 
 	// 2. 将crd自定义的资源对象加入Schema
@@ -37,6 +37,7 @@ func InitManager()  {
 
 	// 3. 初始化使用code-generator
 	taskClient := versioned.NewForConfigOrDie(K8sRestConfig())
+
 	// 4. 初始化 controller
 	taskController := controller.NewTaskController(
 		mgr.GetEventRecorderFor("cicd_task"),
@@ -45,15 +46,14 @@ func InitManager()  {
 	// 5. 定义controller的管理对象等工作
 	if err = builder.ControllerManagedBy(mgr).
 		For(&taskv1alpha1.Task{}).
-		Complete(taskController);err != nil {
+		Complete(taskController); err != nil {
 
 		mgr.GetLogger().Error(err, "unable to create manager")
 		os.Exit(1)
 	}
 
-
 	// 6. 启动管理器
-	if err = mgr.Start(signals.SetupSignalHandler());err != nil {
+	if err = mgr.Start(signals.SetupSignalHandler()); err != nil {
 		mgr.GetLogger().Error(err, "unable to start manager")
 	}
 }

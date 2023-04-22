@@ -7,7 +7,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func parseImage(img string) (*builder.Image,error) {
+func parseImage(img string) (*builder.Image, error) {
 	ref, err := name.ParseReference(img)
 	if err != nil {
 		return nil, err
@@ -27,14 +27,13 @@ func parseImage(img string) (*builder.Image,error) {
 		if err != nil {
 			return nil, err
 		}
-		conf,err := img.ConfigFile()
+		conf, err := img.ConfigFile()
 		if err != nil {
 			return nil, err
 		}
 		imgBuilder.AddCommand(conf.OS, conf.Architecture, conf.Config.Entrypoint, conf.Config.Cmd)
-		return imgBuilder,nil
+		return imgBuilder, nil
 	}
-
 
 	// index 模式
 	idx, err := des.ImageIndex()
@@ -49,26 +48,24 @@ func parseImage(img string) (*builder.Image,error) {
 	for _, d := range mf.Manifests {
 		img, err := idx.Image(d.Digest)
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
-		conf,err:=img.ConfigFile()
+		conf, err := img.ConfigFile()
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
-		imgBuilder.AddCommand(conf.OS,conf.Architecture,conf.Config.Entrypoint,conf.Config.Cmd)
+		imgBuilder.AddCommand(conf.OS, conf.Architecture, conf.Config.Entrypoint, conf.Config.Cmd)
 		//fmt.Println(cf.OS,"/",cf.Architecture,":",cf.Config.Entrypoint,cf.Config.Cmd)
 	}
-	return  imgBuilder,nil
+	return imgBuilder, nil
 }
-
 
 func main() {
 
 	img, err := parseImage("nginx:1.18-alpine")
-	if err != nil{
+	if err != nil {
 		klog.Fatal(err)
 	}
 	klog.Info(img)
-
 
 }

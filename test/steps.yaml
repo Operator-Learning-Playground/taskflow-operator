@@ -1,29 +1,45 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: st
+  name: test-st
   annotations:
-    build: two
-    builder: john-doe
+    taskorder: "0"
 spec:
+  restartPolicy: Never
+  initContainers:
+    - name: stepx
+      image: shenyisyn/entrypoint:v1
+      imagePullPolicy: IfNotPresent
+      command: [ "cp","/app/entrypoint","/entrypoint/bin" ]
+      volumeMounts:
+        - mountPath: /entrypoint/bin
+          name: entrypoint-volume
   containers:
     - name: step1
       image: busybox:1.28
       imagePullPolicy: IfNotPresent
-      command: ["sh", "-c"]
+      command: ["/entrypoint/bin/entrypoint"]
       args:
-        - while true; do
-          if [[ -e /etc/podinfo/annotations ]]; then
-          echo -en '\n\n'; cat /etc/podinfo/annotations; fi;
-          sleep 5;
-          done;
+        - --wait
+        - /etc/podinfo/order
+        - --waitcontent
+        - "1"
+        - --out
+        - out.log
+        - --command
+        - echo
+        - "step done"
       volumeMounts:
+        - mountPath: /entrypoint/bin
+          name: entrypoint-volume
         - name: podinfo
           mountPath: /etc/podinfo
   volumes:
+    - name: entrypoint-volume
+      emptyDir: {}
     - name: podinfo
       downwardAPI:
         items:
-          - path: "annotations"
+          - path: "order"
             fieldRef:
-              fieldPath: metadata.annotations
+              fieldPath: metadata.annotations['taskorder']

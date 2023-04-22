@@ -15,12 +15,11 @@ type TaskController struct {
 	client.Client
 	*clientset.Clientset
 	Event record.EventRecorder
-
 }
 
 func NewTaskController(event record.EventRecorder, clientset *clientset.Clientset) *TaskController {
 	return &TaskController{
-		Event: event,
+		Event:     event,
 		Clientset: clientset,
 	}
 }
@@ -49,12 +48,9 @@ func (r *TaskController) Reconcile(ctx context.Context, req reconcile.Request) (
 
 	klog.Info("task: ", t)
 
-
-
 	return reconcile.Result{}, nil
 
 }
-
 
 // InjectClient 框架要注入clientSet
 func (r *TaskController) InjectClient(c client.Client) error {

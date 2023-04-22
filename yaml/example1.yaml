@@ -9,6 +9,7 @@ spec:
       command: [ "sh","-c" ]
       args: [ "echo step1" ]
     - name: step2
-      image: busybox:1.28
-      command: [ "sh","-c" ]
-      args: [ "echo step2" ]
+      image: shenyisyn/task:v1
+      args:
+        - echo
+        - "step test"

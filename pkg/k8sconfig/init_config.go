@@ -26,7 +26,7 @@ func K8sRestConfig() *rest.Config {
 	klog.Info("run outside cluster!")
 
 	path := common.GetWd()
-	config, err := clientcmd.BuildConfigFromFlags("", path + "/resources/config")
+	config, err := clientcmd.BuildConfigFromFlags("", path+"/resources/config")
 	config.Insecure = true
 	if err != nil {
 		klog.Fatal("parse config outside cluster err: ", err)

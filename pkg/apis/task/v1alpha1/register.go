@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	TaskGroup = "api.practice.com"
+	TaskGroup   = "api.practice.com"
 	TaskVersion = "v1alpha1"
 )
+
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: TaskGroup, Version: TaskVersion}
 

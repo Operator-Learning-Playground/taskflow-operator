@@ -1,4 +1,5 @@
 package v1alpha1
+
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,11 +18,11 @@ type Task struct {
 }
 
 type TaskSpec struct {
-	 Steps []TaskStep `json:"steps,omitempty"`
+	Steps []TaskStep `json:"steps,omitempty"`
 }
 
 type TaskStep struct {
-	  corev1.Container `json:",inline"`
+	corev1.Container `json:",inline"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -34,5 +35,3 @@ type TaskList struct {
 
 	Items []Task `json:"items"`
 }
-
-

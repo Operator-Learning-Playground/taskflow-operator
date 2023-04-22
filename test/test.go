@@ -8,11 +8,12 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"log"
 )
+
 func main() {
 	//alpine:3.12
 	// 这里输入镜像
-	ref, err := name.ParseReference("alpine:3.14")
-	if err!=nil{
+	ref, err := name.ParseReference("alpine:3.12")
+	if err != nil {
 		log.Fatalln(err)
 	}
 	des, err := remote.Get(ref) // 获取镜像描述信息
@@ -24,7 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	mf, err :=idx.IndexManifest()
+	mf, err := idx.IndexManifest()
 
 	if err != nil {
 		log.Fatalln(err)
@@ -40,10 +41,7 @@ func main() {
 			log.Fatalln(err)
 		}
 
-		fmt.Println(cf.OS, "/", cf.Architecture,":", cf.Config.Entrypoint, cf.Config.Cmd)
+		fmt.Println(cf.OS, "/", cf.Architecture, ":", cf.Config.Entrypoint, cf.Config.Cmd)
 	}
 
 }
-
-
-
