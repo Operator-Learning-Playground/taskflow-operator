@@ -7,8 +7,10 @@ import (
 )
 
 const (
-	TaskGroup   = "api.practice.com"
-	TaskVersion = "v1alpha1"
+	TaskGroup      = "api.practice.com"
+	TaskVersion    = "v1alpha1"
+	TaskKind       = "Task"
+	TaskApiVersion = "api.practice.com/v1alpha1"
 )
 
 // SchemeGroupVersion is group version used to register these objects

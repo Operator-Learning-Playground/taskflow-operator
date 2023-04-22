@@ -30,7 +30,6 @@ func K8sRestConfig() *rest.Config {
 	config.Insecure = true
 	if err != nil {
 		klog.Fatal("parse config outside cluster err: ", err)
-
 	}
 
 	return config

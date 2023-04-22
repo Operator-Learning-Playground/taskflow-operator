@@ -1,7 +1,7 @@
 apiVersion: api.practice.com/v1alpha1
 kind: Task
 metadata:
-  name: mytask
+  name: mytask-error-test
 spec:
   steps:
     - name: step1
@@ -9,7 +9,14 @@ spec:
       command: [ "sh","-c" ]
       args: [ "echo step1" ]
     - name: step2
+      image: busybox:1.28
+      command: ["sh", "-c"]
+      args:
+        - echo step2;
+          echo error;
+          exit 1;
+    - name: step3
       image: shenyisyn/task:v1
       args:
         - echo
-        - "step test2"
+        - "step test3"

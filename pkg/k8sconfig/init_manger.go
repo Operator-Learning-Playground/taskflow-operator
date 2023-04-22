@@ -3,10 +3,13 @@ package k8sconfig
 import (
 	taskv1alpha1 "github.com/myoperator/cicdoperator/pkg/apis/task/v1alpha1"
 	"github.com/myoperator/cicdoperator/pkg/controller"
+	corev1 "k8s.io/api/core/v1"
 	"log"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"os"
 
@@ -15,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-//初始化 控制器管理器
+//InitManager 初始化控制器管理器
 func InitManager() {
 
 	logf.SetLogger(zap.New())
@@ -46,8 +49,12 @@ func InitManager() {
 	// 5. 定义controller的管理对象等工作
 	if err = builder.ControllerManagedBy(mgr).
 		For(&taskv1alpha1.Task{}).
+		Watches(&source.Kind{Type: &corev1.Pod{}},
+			handler.Funcs{
+				UpdateFunc: taskController.OnUpdate,
+			},
+		).
 		Complete(taskController); err != nil {
-
 		mgr.GetLogger().Error(err, "unable to create manager")
 		os.Exit(1)
 	}

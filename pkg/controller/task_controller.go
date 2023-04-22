@@ -5,9 +5,12 @@ import (
 	"github.com/myoperator/cicdoperator/pkg/apis/task/v1alpha1"
 	"github.com/myoperator/cicdoperator/pkg/builder"
 	clientset "github.com/myoperator/cicdoperator/pkg/client/clientset/versioned"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -33,6 +36,7 @@ func (r *TaskController) Reconcile(ctx context.Context, req reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
+	// 处理调协pod
 	podBuilder := builder.NewPodBuilder(t, r.Client)
 	err = podBuilder.Build(ctx)
 	if err != nil {
@@ -56,4 +60,18 @@ func (r *TaskController) Reconcile(ctx context.Context, req reconcile.Request) (
 func (r *TaskController) InjectClient(c client.Client) error {
 	r.Client = c
 	return nil
+}
+
+func (r *TaskController) OnUpdate(event event.UpdateEvent, limitingInterface workqueue.RateLimitingInterface) {
+	for _, ref := range event.ObjectNew.GetOwnerReferences() {
+		if ref.Kind == v1alpha1.TaskKind && ref.APIVersion == v1alpha1.TaskApiVersion {
+			// 重新放入Reconcile调协方法
+			limitingInterface.Add(reconcile.Request{
+				types.NamespacedName{
+					Name: ref.Name, Namespace: event.ObjectNew.GetNamespace(),
+				},
+			})
+		}
+	}
+
 }

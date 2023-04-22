@@ -39,7 +39,7 @@ func NewImage(name string, digest v1.Hash, ref name.Reference) *Image {
 	return &Image{
 		Name:    name,
 		Digest:  digest,
-		Ref:	 ref,
+		Ref:     ref,
 		Command: make(map[string]*ImageCommand),
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/myoperator/cicdoperator/pkg/common"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 	"strings"
@@ -22,11 +23,13 @@ func NewPodBuilder(task *v1alpha1.Task, client client.Client) *PodBuilder {
 	return &PodBuilder{task: task, client: client}
 }
 
+// setInitContainer 设置InitContainer
 func (pb *PodBuilder) setInitContainer(pod *v1.Pod) {
+	// 主要的entrypoint容器
 	pod.Spec.InitContainers = []v1.Container{
 		{
 			Name:            pod.Name + "init",
-			Image:           "shenyisyn/entrypoint:v1",
+			Image:           EntryPointImage,
 			ImagePullPolicy: v1.PullIfNotPresent,
 			Command:         []string{"cp", "/app/entrypoint", "/entrypoint/bin"},
 			VolumeMounts: []v1.VolumeMount{
@@ -39,6 +42,8 @@ func (pb *PodBuilder) setInitContainer(pod *v1.Pod) {
 	}
 }
 
+// setPodVolumes 设置挂载
+// 设置pod数据卷--重要，包含了downwardAPI 和emptyDir
 func (pb *PodBuilder) setPodVolumes(pod *v1.Pod) {
 	volumes := []v1.Volume{
 		{
@@ -66,43 +71,88 @@ func (pb *PodBuilder) setPodVolumes(pod *v1.Pod) {
 	pod.Spec.Volumes = append(pod.Spec.Volumes, volumes...)
 }
 
-//设置 POD元信息 包含 注解
+const (
+	EntryPointImage              = "docker.io/shenyisyn/entrypoint:v1.1"
+	TaskPodPrefix                = "task-pod-"
+	AnnotationTaskOrderKey       = "taskorder"
+	AnnotationTaskOrderInitValue = "0"
+	AnnotationExitOrder          = "-1" 	//退出step用的Order标识
+)
+
+// setPodMeta 设置Pod信息
 func (pb *PodBuilder) setPodMeta(pod *v1.Pod) {
 	pod.Namespace = pb.task.Namespace
-	pod.Name = "task-pod-" + pb.task.Name          // pod名称
+	//pod.Name = TaskPodPrefix + pb.task.Name 	// pod名称
+	// 如果要尾部增加随机字符串的使用方法，在k8s内部层面来保证唯一
+	pod.GenerateName = TaskPodPrefix + pb.task.Name + "-"
 	pod.Spec.RestartPolicy = v1.RestartPolicyNever // 设置永不重启
+
+	pod.Labels = map[string]string{
+		"type":     "taskpod",
+		"taskname": pb.task.Name,
+	}
+
 	pod.Annotations = map[string]string{
-		"taskorder": "0",
+		AnnotationTaskOrderKey: AnnotationTaskOrderInitValue,
 	}
 }
 
+// getChildPod 判断Task管理的Pod是否存在，如果存在直接返回Pod
+func (pb *PodBuilder) getChildPod() (*v1.Pod, error) {
+	pods := &v1.PodList{}
+	err := pb.client.List(context.Background(), pods,
+		client.HasLabels{"type", "taskname"}, client.InNamespace(pb.task.Namespace))
+
+	// 没取到Pod，则要进入创建流程
+	if err != nil {
+		klog.Error("getChildPod: ", err)
+		return nil, err
+	}
+
+	// 找到该Pod
+	for _, pod := range pods.Items {
+		for _, own := range pod.OwnerReferences {
+			if own.UID == pb.task.UID {
+				return &pod, err
+			}
+		}
+	}
+	return nil, fmt.Errorf("found no task-pod")
+}
+
+// setContainer 设置Container
 func (pb *PodBuilder) setContainer(index int, step v1alpha1.TaskStep) (v1.Container, error) {
-	// 这里要强烈注意：step.Command必须要设置，如果没设置则通过http 去远程取。取不到直接报错
-	command := step.Command // 取出它 原始的command ,是个 string切片
-	if len(command) == 0 {  //没有写 command  . 需要从网上去解析
+	// 注意：step.Command必须要设置，如果没有设置则通过http远程获取。取不到直接报错
+	command := step.Command // 取出原command
+	// 如果没有command，远程获取
+	if len(command) == 0 {
 		ref, err := name.ParseReference(step.Image, name.WeakValidation)
 		if err != nil {
+			klog.Error("parse container command reference error: ", err)
 			return step.Container, err
 		}
-		// 从缓存获取
-		var getImage *Image
 
-		// 如果缓存有
+		// 从缓存获取，如果有就从缓存拿取，没有就远程调用
+		var getImage *Image
 		if v, ok := common.ImageCache.Get(ref); ok {
 			getImage = v.(*Image)
-		} else { //缓存没有的情况下
-			img, err := ParseImage(step.Image) //解析镜像
+		} else {
+			// 解析镜像
+			img, err := ParseImage(step.Image)
 			if err != nil {
+				klog.Error("parse container image error: ", err)
 				return step.Container, err
 			}
-			common.ImageCache.Add(img.Ref, img) //加入缓存
+			// 加入缓存
+			common.ImageCache.Add(img.Ref, img)
 			getImage = img
 		}
-		// 暂时先写死 OS=Linux/amd64
+		// 暂时先支持 OS=Linux/amd64
 		tempOs := "linux/amd64"
 		if imgObj, ok := getImage.Command[tempOs]; ok {
 			command = imgObj.Command
-			if len(step.Args) == 0 {  // 覆盖args （假设有的话)
+			// 如果有args，覆盖args
+			if len(step.Args) == 0 {
 				step.Args = imgObj.Args
 			}
 		} else {
@@ -111,7 +161,8 @@ func (pb *PodBuilder) setContainer(index int, step v1alpha1.TaskStep) (v1.Contai
 
 	}
 
-	args := step.Args //取出它原始的 args
+	// 先取出它原始的 args，把其他需要的数据都放入，再做拼接
+	args := step.Args
 
 	step.Container.ImagePullPolicy = v1.PullIfNotPresent //强迫设置拉取策略
 	step.Container.Command = []string{"/entrypoint/bin/entrypoint"}
@@ -121,10 +172,11 @@ func (pb *PodBuilder) setContainer(index int, step v1alpha1.TaskStep) (v1.Contai
 		"--out", "stdout", // entrypoint中写上stdout 就会定向到标准输出
 		"--command",
 	}
-	// "sh -c"
+	// ex: "sh -c"，进行拼接
 	step.Container.Args = append(step.Container.Args, strings.Join(command, " "))
 	step.Container.Args = append(step.Container.Args, args...)
-	//设置挂载点
+
+	// 设置VolumeMounts挂载点
 	step.Container.VolumeMounts = []v1.VolumeMount{
 		{
 			Name:      "entrypoint-volume",
@@ -138,8 +190,33 @@ func (pb *PodBuilder) setContainer(index int, step v1alpha1.TaskStep) (v1.Contai
 	return step.Container, nil
 }
 
+// Build 创建方法
 func (pb *PodBuilder) Build(ctx context.Context) error {
 
+	// 1. 先判断pod是否存在
+	getPod, err := pb.getChildPod()
+	// 代表Pod已被创建
+	if err == nil {
+		if getPod.Status.Phase == v1.PodRunning {
+			// 如果为起始状态，先把annotation 设置为1，让流水线可以执行，并更新
+			if getPod.Annotations[AnnotationTaskOrderKey] == AnnotationTaskOrderInitValue {
+				getPod.Annotations[AnnotationTaskOrderKey] = "1"
+				return pb.client.Update(ctx, getPod)
+			} else {
+				// 如果是其他状态，则调用forward方法前进
+				if err := pb.forward(ctx, getPod); err != nil {
+					return err
+				}
+			}
+		}
+
+		fmt.Println("new status: ", getPod.Status.Phase)
+		fmt.Println("annotation order:  ", getPod.Annotations[AnnotationTaskOrderKey])
+
+		return nil
+	}
+
+	// 2. 创建流程，准备数据
 	newPod := &v1.Pod{}
 	pb.setPodMeta(newPod)
 	pb.setInitContainer(newPod)
@@ -147,9 +224,9 @@ func (pb *PodBuilder) Build(ctx context.Context) error {
 	cList := make([]v1.Container, 0)
 	for index, step := range pb.task.Spec.Steps {
 		// 设置image拉起策略
-		getContainer,err := pb.setContainer(index,step)
-		if err != nil{
-			fmt.Println("err: ", err)
+		getContainer, err := pb.setContainer(index, step)
+		if err != nil {
+			klog.Error("setContainer err: ", err)
 			return err
 		}
 		cList = append(cList, getContainer)
@@ -157,7 +234,7 @@ func (pb *PodBuilder) Build(ctx context.Context) error {
 	}
 
 	newPod.Spec.Containers = cList
-	pb.setPodVolumes(newPod) // 设置pod数据卷--重要，包含了downwardAPI 和emptyDir
+	pb.setPodVolumes(newPod)
 
 	// 设置ownerReferences
 	newPod.OwnerReferences = append(newPod.OwnerReferences, metav1.OwnerReference{
@@ -170,9 +247,41 @@ func (pb *PodBuilder) Build(ctx context.Context) error {
 	return pb.client.Create(ctx, newPod)
 }
 
-func (pb *PodBuilder) setStep(pod *v1.Pod) {
-	pod.Annotations = map[string]string{
-		"taskorder": "0",
+// forward step前进的方法，容器的流转
+func (pb *PodBuilder) forward(ctx context.Context, pod *v1.Pod) error {
+	if pod.Status.Phase == v1.PodSucceeded {
+		return nil
+	}
+	// Order值 ==-1  代表 有一个step出错了。不做处理。
+	if pod.Annotations[AnnotationTaskOrderKey] == AnnotationExitOrder {
+		return nil
 	}
 
+	order, err := strconv.Atoi(pod.Annotations[AnnotationTaskOrderKey])
+	if err != nil {
+		klog.Error("AnnotationTaskOrderKey err: ", err)
+		return err
+	}
+	// 容器长度相等，代表已经到了最后一个
+	if order == len(pod.Spec.Containers) {
+		return nil
+	}
+	// 代表 当前的容器可能在等待  或者正在运行
+	containerState := pod.Status.ContainerStatuses[order-1].State
+	if containerState.Terminated == nil {
+		return nil
+	} else {
+		// 代表非正常退出，容器出错
+		if containerState.Terminated.ExitCode != 0 {
+			//把Order 值改成 -1
+			pod.Annotations[AnnotationTaskOrderKey] = AnnotationExitOrder
+			return pb.client.Update(ctx, pod)
+			//pod.Status.Phase=v1.PodFailed
+			//return pb.Client.Status().Update(ctx,pod)
+		}
+	}
+	// 流水线加一
+	order++
+	pod.Annotations[AnnotationTaskOrderKey] = strconv.Itoa(order)
+	return pb.client.Update(ctx, pod)
 }
