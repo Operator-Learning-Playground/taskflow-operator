@@ -130,7 +130,7 @@ func (pb *PodBuilder) setContainer(index int, step v1alpha1.TaskStep) (v1.Contai
 	// 注意：step.Command必须要设置，如果没有设置则通过http远程获取，取不到直接报错
 	command := step.Command // 取出原command
 	if step.Script == "" {
-		klog.Info(step.Name, "use normal mode.....")
+		klog.Info(step.Name, " use normal mode.....")
 		// 如果没有command，远程获取
 		if len(command) == 0 {
 			ref, err := name.ParseReference(step.Image, name.WeakValidation)
@@ -182,6 +182,7 @@ func (pb *PodBuilder) setContainer(index int, step v1alpha1.TaskStep) (v1.Contai
 		// ex: "sh -c"，进行拼接
 		step.Container.Args = append(step.Container.Args, strings.Join(command, " "))
 		step.Container.Args = append(step.Container.Args, args...)
+		fmt.Println(step.Container.Args)
 
 	} else {
 		// 脚本模式
@@ -294,8 +295,11 @@ func (pb *PodBuilder) forward(ctx context.Context, pod *v1.Pod) error {
 	if order == len(pod.Spec.Containers) {
 		return nil
 	}
-	// 代表 当前的容器可能在等待  或者正在运行
+
+	// 代表当前的容器可能在等待或者正在运行
 	containerState := pod.Status.ContainerStatuses[order-1].State
+
+	// 代表目前的容器正在等待或者运行
 	if containerState.Terminated == nil {
 		return nil
 	} else {
@@ -308,6 +312,7 @@ func (pb *PodBuilder) forward(ctx context.Context, pod *v1.Pod) error {
 			//return pb.Client.Status().Update(ctx,pod)
 		}
 	}
+
 	// 流水线加一
 	order++
 	pod.Annotations[AnnotationTaskOrderKey] = strconv.Itoa(order)

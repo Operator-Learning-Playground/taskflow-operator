@@ -9,6 +9,14 @@ spec:
       command: [ "sh","-c" ]
       args: [ "echo step1" ]
     - name: step2
+      image: busybox:1.28
+      command: [ "sh","-c" ]
+      args: [ "echo step22222" ]
+    - name: step3
+      image: alpine:3.12
+      command: [ "sh","-c" ]
+      args: [ "echo step33333" ]
+    - name: step4
       image: shenyisyn/task:v1
       args:
         - echo

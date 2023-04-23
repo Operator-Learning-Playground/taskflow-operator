@@ -19,7 +19,7 @@ func parseImage(img string) (*builder.Image, error) {
 	}
 
 	// 初始化我们的业务 Image 对象
-	imgBuilder := builder.NewImage(img, des.Digest)
+	imgBuilder := builder.NewImage(img, des.Digest, ref)
 
 	// image 类型
 	if des.MediaType.IsImage() {

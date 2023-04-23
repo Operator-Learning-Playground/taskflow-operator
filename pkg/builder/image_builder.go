@@ -101,6 +101,8 @@ func ParseImage(img string) (*Image, error) {
 			return nil, err
 		}
 		imgBuilder.AddCommand(conf.OS, conf.Architecture, conf.Config.Entrypoint, conf.Config.Cmd)
+		klog.Info("OS: ", conf.OS, " Architecture: ", conf.Architecture, " Entrypoint: ", conf.Config.Entrypoint,
+			" Cmd: ", conf.Config.Cmd)
 		//fmt.Println(cf.OS,"/",cf.Architecture,":",cf.Config.Entrypoint,cf.Config.Cmd)
 	}
 	return imgBuilder, nil

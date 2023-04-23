@@ -22,8 +22,9 @@ type TaskSpec struct {
 }
 
 type TaskStep struct {
-	corev1.Container `json:",inline"` // 容器对象
-	Script           string           `json:"script,omitempty"` // 支持脚本命令
+	corev1.Container 			`json:",inline"` // 容器对象
+	JobStatus        bool		`json:"job_status",omitempty", default:"false"`
+	Script           string     `json:"script,omitempty"` // 支持脚本命令
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
