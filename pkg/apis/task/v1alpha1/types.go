@@ -8,7 +8,7 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Task
+// Task 任务
 type Task struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -22,12 +22,13 @@ type TaskSpec struct {
 }
 
 type TaskStep struct {
-	corev1.Container `json:",inline"`
+	corev1.Container `json:",inline"` // 容器对象
+	Script           string           `json:"script,omitempty"` // 支持脚本命令
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// TaskList
+// TaskList ..
 type TaskList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional

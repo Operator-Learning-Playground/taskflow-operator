@@ -62,7 +62,7 @@ func (r *TaskController) InjectClient(c client.Client) error {
 	return nil
 }
 
-func (r *TaskController) OnUpdate(event event.UpdateEvent, limitingInterface workqueue.RateLimitingInterface) {
+func (r *TaskController) OnUpdatePodHandler(event event.UpdateEvent, limitingInterface workqueue.RateLimitingInterface) {
 	for _, ref := range event.ObjectNew.GetOwnerReferences() {
 		if ref.Kind == v1alpha1.TaskKind && ref.APIVersion == v1alpha1.TaskApiVersion {
 			// 重新放入Reconcile调协方法
@@ -74,4 +74,16 @@ func (r *TaskController) OnUpdate(event event.UpdateEvent, limitingInterface wor
 		}
 	}
 
+}
+
+func (r *TaskController) OnDeletePodHandler(event event.DeleteEvent, limitingInterface workqueue.RateLimitingInterface) {
+	for _, ref := range event.Object.GetOwnerReferences() {
+		if ref.Kind == v1alpha1.TaskKind && ref.APIVersion == v1alpha1.TaskApiVersion {
+			// 重新入列，这样删除pod后，就会进入调和loop，发现ownerReference还在，会立即创建出新的pod。
+			klog.Info("delete pod: ", event.Object.GetName(), event.Object.GetObjectKind())
+			limitingInterface.Add(reconcile.Request{
+				NamespacedName: types.NamespacedName{Name: ref.Name,
+					Namespace: event.Object.GetNamespace()}})
+		}
+	}
 }

@@ -25,7 +25,7 @@ func NewPodBuilder(task *v1alpha1.Task, client client.Client) *PodBuilder {
 
 // setInitContainer 设置InitContainer
 func (pb *PodBuilder) setInitContainer(pod *v1.Pod) {
-	// 主要的entrypoint容器
+	// entrypoint容器
 	pod.Spec.InitContainers = []v1.Container{
 		{
 			Name:            pod.Name + "init",
@@ -43,17 +43,17 @@ func (pb *PodBuilder) setInitContainer(pod *v1.Pod) {
 }
 
 // setPodVolumes 设置挂载
-// 设置pod数据卷--重要，包含了downwardAPI 和emptyDir
+// 设置pod数据卷: 包含downwardAPI 和emptyDir
 func (pb *PodBuilder) setPodVolumes(pod *v1.Pod) {
 	volumes := []v1.Volume{
 		{
-			Name: "entrypoint-volume",
+			Name: EntryPointVolume,
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
 		},
 		{
-			Name: "podinfo",
+			Name: PodInfoVolume,
 			VolumeSource: v1.VolumeSource{
 				DownwardAPI: &v1.DownwardAPIVolumeSource{
 					Items: []v1.DownwardAPIVolumeFile{
@@ -67,6 +67,12 @@ func (pb *PodBuilder) setPodVolumes(pod *v1.Pod) {
 				},
 			},
 		},
+		{
+			Name: ExecuteScriptsVolume,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 	pod.Spec.Volumes = append(pod.Spec.Volumes, volumes...)
 }
@@ -76,7 +82,7 @@ const (
 	TaskPodPrefix                = "task-pod-"
 	AnnotationTaskOrderKey       = "taskorder"
 	AnnotationTaskOrderInitValue = "0"
-	AnnotationExitOrder          = "-1" 	//退出step用的Order标识
+	AnnotationExitOrder          = "-1" //退出step用的Order标识
 )
 
 // setPodMeta 设置Pod信息
@@ -103,13 +109,12 @@ func (pb *PodBuilder) getChildPod() (*v1.Pod, error) {
 	err := pb.client.List(context.Background(), pods,
 		client.HasLabels{"type", "taskname"}, client.InNamespace(pb.task.Namespace))
 
-	// 没取到Pod，则要进入创建流程
 	if err != nil {
 		klog.Error("getChildPod: ", err)
 		return nil, err
 	}
 
-	// 找到该Pod
+	// 遍例找特定Pod
 	for _, pod := range pods.Items {
 		for _, own := range pod.OwnerReferences {
 			if own.UID == pb.task.UID {
@@ -122,73 +127,96 @@ func (pb *PodBuilder) getChildPod() (*v1.Pod, error) {
 
 // setContainer 设置Container
 func (pb *PodBuilder) setContainer(index int, step v1alpha1.TaskStep) (v1.Container, error) {
-	// 注意：step.Command必须要设置，如果没有设置则通过http远程获取。取不到直接报错
+	// 注意：step.Command必须要设置，如果没有设置则通过http远程获取，取不到直接报错
 	command := step.Command // 取出原command
-	// 如果没有command，远程获取
-	if len(command) == 0 {
-		ref, err := name.ParseReference(step.Image, name.WeakValidation)
-		if err != nil {
-			klog.Error("parse container command reference error: ", err)
-			return step.Container, err
-		}
-
-		// 从缓存获取，如果有就从缓存拿取，没有就远程调用
-		var getImage *Image
-		if v, ok := common.ImageCache.Get(ref); ok {
-			getImage = v.(*Image)
-		} else {
-			// 解析镜像
-			img, err := ParseImage(step.Image)
+	if step.Script == "" {
+		klog.Info(step.Name, "use normal mode.....")
+		// 如果没有command，远程获取
+		if len(command) == 0 {
+			ref, err := name.ParseReference(step.Image, name.WeakValidation)
 			if err != nil {
-				klog.Error("parse container image error: ", err)
+				klog.Error("parse container command reference error: ", err)
 				return step.Container, err
 			}
-			// 加入缓存
-			common.ImageCache.Add(img.Ref, img)
-			getImage = img
-		}
-		// 暂时先支持 OS=Linux/amd64
-		tempOs := "linux/amd64"
-		if imgObj, ok := getImage.Command[tempOs]; ok {
-			command = imgObj.Command
-			// 如果有args，覆盖args
-			if len(step.Args) == 0 {
-				step.Args = imgObj.Args
+
+			// 从缓存获取，如果有就从缓存拿取，没有就远程调用
+			var getImage *Image
+			if v, ok := common.ImageCache.Get(ref); ok {
+				getImage = v.(*Image)
+			} else {
+				// 解析镜像
+				img, err := ParseImage(step.Image)
+				if err != nil {
+					klog.Error("parse container image error: ", err)
+					return step.Container, err
+				}
+				// 加入缓存
+				common.ImageCache.Add(img.Ref, img)
+				getImage = img
 			}
-		} else {
-			return step.Container, fmt.Errorf("error image command")
+			// 仅支持 OS=Linux/amd64
+			tempOs := "linux/amd64"
+			if imgObj, ok := getImage.Command[tempOs]; ok {
+				command = imgObj.Command
+				// 如果有args，覆盖args
+				if len(step.Args) == 0 {
+					step.Args = imgObj.Args
+				}
+			} else {
+				return step.Container, fmt.Errorf("error image command")
+			}
+
 		}
 
-	}
+		// 先取出它原始的 args，把其他需要的数据都放入，再做拼接
+		args := step.Args
 
-	// 先取出它原始的 args，把其他需要的数据都放入，再做拼接
-	args := step.Args
+		step.Container.ImagePullPolicy = v1.PullIfNotPresent //强迫设置拉取策略
+		step.Container.Command = []string{"/entrypoint/bin/entrypoint"}
+		step.Container.Args = []string{
+			"--wait", "/etc/podinfo/order",
+			"--waitcontent", strconv.Itoa(index + 1),
+			"--out", "stdout", // entrypoint中写上stdout 就会定向到标准输出
+			"--command",
+		}
+		// ex: "sh -c"，进行拼接
+		step.Container.Args = append(step.Container.Args, strings.Join(command, " "))
+		step.Container.Args = append(step.Container.Args, args...)
 
-	step.Container.ImagePullPolicy = v1.PullIfNotPresent //强迫设置拉取策略
-	step.Container.Command = []string{"/entrypoint/bin/entrypoint"}
-	step.Container.Args = []string{
-		"--wait", "/etc/podinfo/order",
-		"--waitcontent", strconv.Itoa(index + 1),
-		"--out", "stdout", // entrypoint中写上stdout 就会定向到标准输出
-		"--command",
+	} else {
+		// 脚本模式
+		klog.Info(step.Name, "use script mode.....")
+		// 如果script不为空，表示使用script模式，command和args无效
+
+		step.Container.Command = []string{"sh"} // 使用sh命令
+		// 使用脚本：1.找到文件夹，2.创建文件并修改权限，3.写入文件 4.解密
+		step.Container.Args = []string{"-c", fmt.Sprintf(`scriptfile="/execute/scripts/%s";touch ${scriptfile} && chmod +x ${scriptfile};echo "%s" > ${scriptfile};/entrypoint/bin/entrypoint --wait /etc/podinfo/order --waitcontent %d --out stdout  --encodefile ${scriptfile};`,
+			step.Name, common.EncodeScript(step.Script), index+1)}
 	}
-	// ex: "sh -c"，进行拼接
-	step.Container.Args = append(step.Container.Args, strings.Join(command, " "))
-	step.Container.Args = append(step.Container.Args, args...)
 
 	// 设置VolumeMounts挂载点
 	step.Container.VolumeMounts = []v1.VolumeMount{
 		{
-			Name:      "entrypoint-volume",
+			Name:      EntryPointVolume,
 			MountPath: "/entrypoint/bin",
 		},
 		{
-			Name:      "podinfo",
+			Name:      ExecuteScriptsVolume, //设置 script挂载卷，不管有没有设置
+			MountPath: "/execute/scripts",
+		},
+		{
+			Name:      PodInfoVolume,
 			MountPath: "/etc/podinfo",
 		},
 	}
 	return step.Container, nil
 }
+
+const (
+	EntryPointVolume     = "entrypoint-volume"     // 入口程序挂载
+	ExecuteScriptsVolume = "execute-inner-scripts" // script属性 存储卷
+	PodInfoVolume        = "podinfo"               // 存储Pod信息  用于dowardApi
+)
 
 // Build 创建方法
 func (pb *PodBuilder) Build(ctx context.Context) error {

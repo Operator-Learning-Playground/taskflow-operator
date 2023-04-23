@@ -5,6 +5,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"k8s.io/klog/v2"
 	"strings"
 )
 
@@ -49,15 +50,17 @@ func ParseImage(img string) (*Image, error) {
 
 	ref, err := name.ParseReference(img, name.WeakValidation)
 	if err != nil {
+		klog.Error(err)
 		return nil, err
 	}
 
 	des, err := remote.Get(ref) // 获取镜像描述信息
 	if err != nil {
+		klog.Error(err)
 		return nil, err
 	}
 
-	// 初始化我们的业务 Image 对象
+	// 初始化业务 Image 对象
 	imgBuilder := NewImage(img, des.Digest, ref)
 	// image 类型
 	if des.MediaType.IsImage() {
@@ -67,29 +70,34 @@ func ParseImage(img string) (*Image, error) {
 		}
 		conf, err := img.ConfigFile()
 		if err != nil {
+			klog.Error(err)
 			return nil, err
 		}
 		imgBuilder.AddCommand(conf.OS, conf.Architecture, conf.Config.Entrypoint, conf.Config.Cmd)
 		return imgBuilder, nil
 	}
 
-	//下方是 index 模式
+	// index 模式
 	idx, err := des.ImageIndex()
 	if err != nil {
+		klog.Error(err)
 		return nil, err
 	}
 	mf, err := idx.IndexManifest()
 
 	if err != nil {
+		klog.Error(err)
 		return nil, err
 	}
 	for _, d := range mf.Manifests {
 		img, err := idx.Image(d.Digest)
 		if err != nil {
+			klog.Error(err)
 			return nil, err
 		}
 		conf, err := img.ConfigFile()
 		if err != nil {
+			klog.Error(err)
 			return nil, err
 		}
 		imgBuilder.AddCommand(conf.OS, conf.Architecture, conf.Config.Entrypoint, conf.Config.Cmd)

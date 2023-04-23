@@ -51,7 +51,8 @@ func InitManager() {
 		For(&taskv1alpha1.Task{}).
 		Watches(&source.Kind{Type: &corev1.Pod{}},
 			handler.Funcs{
-				UpdateFunc: taskController.OnUpdate,
+				UpdateFunc: taskController.OnUpdatePodHandler,
+				DeleteFunc: taskController.OnDeletePodHandler,
 			},
 		).
 		Complete(taskController); err != nil {
