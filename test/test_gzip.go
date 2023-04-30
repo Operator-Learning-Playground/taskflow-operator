@@ -11,7 +11,7 @@ import (
 
 /*
 	用来处理脚本中特殊符号的问题
- */
+*/
 
 // Gzip 将脚本字符串压缩转换成base64，避免
 func Gzip(s string) string {
