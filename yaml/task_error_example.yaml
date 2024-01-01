@@ -1,0 +1,21 @@
+apiVersion: api.practice.com/v1alpha1
+kind: Task
+metadata:
+  name: example-taskflow-error-test
+spec:
+  steps:
+    - name: step1
+      image: busybox:1.28
+      command: [ "sh","-c" ]
+      args: [ "echo step1" ]
+    # 这个 step2 会出错退出，不会执行 step3
+    - name: step2
+      image: busybox:1.28
+      command: ["sh", "-c"]
+      args:
+        - echo step2;
+          echo error;
+          exit 1;
+    - name: step3
+      image: devopscube/kubernetes-job-demo:latest
+      args: [ "10" ]

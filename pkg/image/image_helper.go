@@ -11,7 +11,7 @@ import (
 
 // ImageCommand 镜像内部 command args
 type ImageCommand struct {
-	Command []string // 对应 docker 的 entrypoint
+	Command []string // 对应 docker 的 container-agent
 	Args    []string // 对应 docker 的 cmd
 }
 

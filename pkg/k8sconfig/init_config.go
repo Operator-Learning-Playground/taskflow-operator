@@ -18,7 +18,7 @@ func K8sRestConfigInPod() *rest.Config {
 }
 
 func K8sRestConfig() *rest.Config {
-	if os.Getenv("release") == "1" {
+	if os.Getenv("Release") == "1" {
 		klog.Info("run in cluster!")
 		return K8sRestConfigInPod()
 	}

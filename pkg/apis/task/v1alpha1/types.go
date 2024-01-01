@@ -15,6 +15,9 @@ type Task struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec TaskSpec `json:"spec,omitempty"`
+	// TODO: 加入 TaskStatus 用于查看每个工作流的状态 Running Complete Failed ...
+	// TODO: 记录运行时间，需要在 status加入一个时间值字段 开始时记录时间  结束或错误退出时记录时间
+	// 在调协中修改 status
 }
 
 type TaskSpec struct {
@@ -23,7 +26,6 @@ type TaskSpec struct {
 
 type TaskStep struct {
 	corev1.Container `json:",inline"` // 容器对象
-	JobStatus        bool             `json:"job_status",omitempty", default:"false"`
 	// 支持脚本命令
 	Script string `json:"script,omitempty"`
 }

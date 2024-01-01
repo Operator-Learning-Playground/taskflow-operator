@@ -1,0 +1,23 @@
+apiVersion: api.practice.com/v1alpha1
+kind: Task
+metadata:
+  name: mytask-test-container-agent
+spec:
+  steps:
+    - name: step1
+      image: busybox:1.28
+      command: [ "sh","-c" ]
+      args: [ "echo step1" ]
+    - name: step2
+      image: busybox:1.28
+      command: [ "sh","-c" ]
+      args: [ "echo step22222" ]
+    - name: step3
+      image: alpine:3.12
+      command: [ "sh","-c" ]
+      args: [ "echo step33333" ]
+    - name: step4
+      image: <填入自定义镜像>
+      args:
+        - echo
+        - "step test2"

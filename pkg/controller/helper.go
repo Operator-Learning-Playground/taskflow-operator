@@ -17,18 +17,18 @@ import (
 
 // setInitContainer 设置 InitContainer
 func (r *TaskController) setInitContainer(pod *v1.Pod) {
-	// entrypoint 容器
+	// container-agent 容器
 	// 用意：把通用入口镜像挂载到 Pod 中，使所有容器都共享
 	pod.Spec.InitContainers = []v1.Container{
 		{
 			Name:            pod.Name + "init",
 			Image:           EntryPointImage,
 			ImagePullPolicy: v1.PullIfNotPresent,
-			Command:         []string{"cp", "/app/entrypoint", "/entrypoint/bin"},
+			Command:         []string{"cp", "/app/container-agent", "/container-agent/bin"},
 			VolumeMounts: []v1.VolumeMount{
 				{
-					Name:      "entrypoint-volume",
-					MountPath: "/entrypoint/bin",
+					Name:      "container-agent-volume",
+					MountPath: "/container-agent/bin",
 				},
 			},
 		},
@@ -53,7 +53,7 @@ func (r *TaskController) setPodVolumes(pod *v1.Pod) {
 						{
 							Path: "order",
 							FieldRef: &v1.ObjectFieldSelector{
-								FieldPath: "metadata.annotations['taskorder']",
+								FieldPath: "metadata.annotations['taskflowoperaotr/taskOrder']",
 							},
 						},
 					},
@@ -71,11 +71,11 @@ func (r *TaskController) setPodVolumes(pod *v1.Pod) {
 }
 
 const (
-	EntryPointImage              = "docker.io/taskflow/entrypoint:v1.0"
-	TaskPodPrefix                = "task-pod-"
-	AnnotationTaskOrderKey       = "taskorder"
-	AnnotationTaskOrderInitValue = "0"
-	AnnotationExitOrder          = "-1" // 退出 step 用的标识
+	EntryPointImage              = "docker.io/taskflow/agent:v1.0" // 内部自定义通用镜像
+	TaskPodPrefix                = "task-pod-"                     // taskflow 创建的 Pod 名规范
+	AnnotationTaskOrderKey       = "taskflowoperaotr/taskOrder"    // annotation
+	AnnotationTaskOrderInitValue = "0"                             // 初始 step 标识
+	AnnotationExitOrder          = "-1"                            // 退出 step 标识
 )
 
 // setPodMeta 设置 Pod 信息
@@ -170,11 +170,11 @@ func (r *TaskController) setContainer(index int, step v1alpha1.TaskStep) (v1.Con
 		args := step.Args
 		// 强迫设置拉取策略
 		step.Container.ImagePullPolicy = v1.PullIfNotPresent
-		step.Container.Command = []string{"/entrypoint/bin/entrypoint"}
+		step.Container.Command = []string{"/container-agent/bin/container-agent"}
 		step.Container.Args = []string{
 			"--wait", "/etc/podinfo/order",
 			"--waitcontent", strconv.Itoa(index + 1),
-			// entrypoint 中写上 stdout 就会定向到标准输出
+			// container-agent 中写上 stdout 就会定向到标准输出
 			"--out", "stdout",
 			"--command",
 		}
@@ -190,7 +190,7 @@ func (r *TaskController) setContainer(index int, step v1alpha1.TaskStep) (v1.Con
 
 		step.Container.Command = []string{"sh"} // 使用sh命令
 		// 使用脚本：1.找到文件夹，2.创建文件并修改权限，3.写入文件 4.解密
-		step.Container.Args = []string{"-c", fmt.Sprintf(`scriptfile="/execute/scripts/%s";touch ${scriptfile} && chmod +x ${scriptfile};echo "%s" > ${scriptfile};/entrypoint/bin/entrypoint --wait /etc/podinfo/order --waitcontent %d --out stdout  --encodefile ${scriptfile};`,
+		step.Container.Args = []string{"-c", fmt.Sprintf(`scriptfile="/execute/scripts/%s";touch ${scriptfile} && chmod +x ${scriptfile};echo "%s" > ${scriptfile};/container-agent/bin/container-agent --wait /etc/podinfo/order --waitcontent %d --out stdout  --encodefile ${scriptfile};`,
 			step.Name, common.EncodeScript(step.Script), index+1)}
 	}
 
@@ -198,7 +198,7 @@ func (r *TaskController) setContainer(index int, step v1alpha1.TaskStep) (v1.Con
 	step.Container.VolumeMounts = []v1.VolumeMount{
 		{
 			Name:      EntryPointVolume,
-			MountPath: "/entrypoint/bin",
+			MountPath: "/container-agent/bin",
 		},
 		{
 			Name:      ExecuteScriptsVolume, //设置 script挂载卷，不管有没有设置
@@ -213,9 +213,9 @@ func (r *TaskController) setContainer(index int, step v1alpha1.TaskStep) (v1.Con
 }
 
 const (
-	EntryPointVolume     = "entrypoint-volume"     // 入口程序挂载
-	ExecuteScriptsVolume = "execute-inner-scripts" // script属性 存储卷
-	PodInfoVolume        = "podinfo"               // 存储Pod信息用于 downwardAPI
+	EntryPointVolume     = "container-agent-volume" // 入口程序挂载
+	ExecuteScriptsVolume = "execute-inner-scripts"  // script 属性存储卷
+	PodInfoVolume        = "podinfo"                // 存储 Pod 信息用于 downwardAPI
 )
 
 // deployTaskFlow 调协 task flow
@@ -287,7 +287,7 @@ func (r *TaskController) forward(ctx context.Context, pod *v1.Pod, task *v1alpha
 
 	// AnnotationTaskOrderKey = "-1" 表示流程有错误，直接退出
 	if pod.Annotations[AnnotationTaskOrderKey] == AnnotationExitOrder {
-		r.event.Eventf(task, v1.EventTypeWarning, "TaskFlow Failed", "TaskFlow exit")
+		r.event.Eventf(task, v1.EventTypeWarning, "TaskFlow Exited", "TaskFlow exit")
 		return nil
 	}
 

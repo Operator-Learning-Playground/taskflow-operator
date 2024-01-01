@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskflow-controller
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: taskflow-controller
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: taskflow-controller
+    spec:
+      nodeName: vm-0-16-centos # 只调度到这个节点上
+      serviceAccountName: taskflow-sa # 配置service account
+      containers:
+        - name: taskflow # 控制器镜像
+          image: taskflowoperator:v1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: "Release"
+              value: "1"
+          workingDir: "/app"
+          command: ["./taskflowoperator"]
+          ports:
+            - containerPort: 80
+
