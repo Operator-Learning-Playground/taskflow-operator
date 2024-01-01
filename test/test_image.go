@@ -1,9 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/myoperator/cicdoperator/pkg/builder"
+	"github.com/myoperator/cicdoperator/pkg/image"
 	"k8s.io/klog/v2"
 )
 
@@ -55,17 +56,17 @@ func parseImage(img string) (*builder.Image, error) {
 			return nil, err
 		}
 		imgBuilder.AddCommand(conf.OS, conf.Architecture, conf.Config.Entrypoint, conf.Config.Cmd)
-		//fmt.Println(cf.OS,"/",cf.Architecture,":",cf.Config.Entrypoint,cf.Config.Cmd)
+		//fmt.Println(conf.OS, "/", conf.Architecture, ":", conf.Config.Entrypoint, conf.Config.Cmd)
 	}
 	return imgBuilder, nil
 }
 
 func main() {
 
-	img, err := parseImage("nginx:1.18-alpine")
+	img, err := parseImage("try:v1")
 	if err != nil {
 		klog.Fatal(err)
 	}
-	klog.Info(img)
+	fmt.Println(img)
 
 }

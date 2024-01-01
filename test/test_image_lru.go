@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/myoperator/cicdoperator/pkg/builder"
 	"github.com/myoperator/cicdoperator/pkg/common"
+	"github.com/myoperator/cicdoperator/pkg/image"
 )
 
 func main() {

@@ -16,7 +16,8 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	des, err := remote.Get(ref) // 获取镜像描述信息
+	// 获取镜像描述信息
+	des, err := remote.Get(ref)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -31,6 +32,7 @@ func main() {
 		log.Fatalln(err)
 	}
 	for _, d := range mf.Manifests {
+		// 使用 digest 可以得到 Image 对象，digest 本质就是 hash
 		img, err := idx.Image(d.Digest)
 		if err != nil {
 			log.Fatalln(err)

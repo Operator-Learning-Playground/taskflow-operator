@@ -59,7 +59,7 @@ func UnGzip(s string) string {
 }
 
 func main() {
-	t := Gzip("echo 111111")
+	t := Gzip("# 检查cpu的空闲率是否小于20%\ncpuCount=$[$(vmstat -SM | awk '{if ($15 < 20) print $0}' | wc -l)-1]\nif [ $cpuCount -gt 0 ]\nthen\n    echo caseName:cpu的使用率小于80%, caseDesc:, result:fail, resultDesc:有${cpuCount}个cpu的使用率大于80%\nelse\n    echo caseName:cpu的使用率小于80%, caseDesc:, result:success, resultDesc:cpu的使用率都小于80%\nfi")
 	fmt.Println(t)
 
 	fmt.Println(UnGzip(t))

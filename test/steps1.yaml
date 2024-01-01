@@ -11,6 +11,7 @@ spec:
       image: busybox:1.28
       imagePullPolicy: IfNotPresent
       command: ["sh", "-c"]
+      # 每隔 5 秒打印挂载 annotations
       args:
         - while true; do
           if [[ -e /etc/podinfo/annotations ]]; then
@@ -21,9 +22,12 @@ spec:
         - name: podinfo
           mountPath: /etc/podinfo
   volumes:
+    # 使用 downwardAPI 实现挂载 annotations 给 pod 使用
     - name: podinfo
       downwardAPI: # 使用downwardAPI来注入到container
         items:
           - path: "annotations"
             fieldRef:
               fieldPath: metadata.annotations
+
+# 练习使用 downwardAPI 挂载信息给 pod 内部使用

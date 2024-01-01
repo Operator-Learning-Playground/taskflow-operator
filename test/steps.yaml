@@ -6,10 +6,12 @@ metadata:
     taskorder: "0"
 spec:
   restartPolicy: Never
-  initContainers: # initContainer容器
+  # initContainer容器
+  initContainers:
     - name: stepx
       image: shenyisyn/entrypoint:v1
       imagePullPolicy: IfNotPresent
+      # 把通用的二进制放入 pod 当中，并使用共享数据卷的方式让其他容器获取
       command: [ "cp","/app/entrypoint","/entrypoint/bin" ]
       volumeMounts:
         - mountPath: /entrypoint/bin
@@ -25,8 +27,8 @@ spec:
         - --waitcontent
         - "1"
         - --out
-        - out.log
-        - --command
+        - out.log    # 不给用户暴露，放入 pod 环境的日志
+        - --command  # 这里才是用户镜像真正执行命令
         - echo
         - "step done"
       volumeMounts:
@@ -35,6 +37,7 @@ spec:
         - name: podinfo
           mountPath: /etc/podinfo
   volumes:
+    # pod 中所有容器共享数据卷
     - name: entrypoint-volume
       emptyDir: {}
     - name: podinfo

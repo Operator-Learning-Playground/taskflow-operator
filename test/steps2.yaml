@@ -3,7 +3,7 @@ kind: Pod
 metadata:
   name: st
   annotations:
-    taskorder: "2"
+    taskorder: "0"
 spec:
   restartPolicy: Never
   containers:
@@ -11,6 +11,7 @@ spec:
       image: busybox:1.28
       imagePullPolicy: IfNotPresent
       command: ["sh", "-c"]
+      # 等到挂载信息变动后，再执行打印
       args:
         - while true; do
           order=$(cat /etc/podinfo/order);
@@ -25,6 +26,7 @@ spec:
       image: busybox:1.28
       imagePullPolicy: IfNotPresent
       command: [ "sh", "-c" ]
+      # 等到挂载信息变动后，再执行打印
       args:
         - while true; do
           order=$(cat /etc/podinfo/order);
@@ -39,6 +41,7 @@ spec:
     - name: podinfo # 注入annotations来实现container的顺序
       downwardAPI:
         items:
+          # 只限定挂载 key=taskorder 的 annotation
           - path: "order"
             fieldRef:
               fieldPath: metadata.annotations['taskorder']

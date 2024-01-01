@@ -3,8 +3,7 @@ package controller
 import (
 	"context"
 	"github.com/myoperator/cicdoperator/pkg/apis/task/v1alpha1"
-	"github.com/myoperator/cicdoperator/pkg/builder"
-	clientset "github.com/myoperator/cicdoperator/pkg/client/clientset/versioned"
+	"github.com/myoperator/cicdoperator/pkg/image"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -15,51 +14,42 @@ import (
 )
 
 type TaskController struct {
-	client.Client
-	*clientset.Clientset
-	Event record.EventRecorder
+	client       client.Client
+	event        record.EventRecorder
+	imageManager *builder.ImageManager
 }
 
-func NewTaskController(event record.EventRecorder, clientset *clientset.Clientset) *TaskController {
+func NewTaskController(event record.EventRecorder, client client.Client, imageManager *builder.ImageManager) *TaskController {
 	return &TaskController{
-		Event:     event,
-		Clientset: clientset,
+		event:        event,
+		client:       client,
+		imageManager: imageManager,
 	}
 }
 
 func (r *TaskController) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 
 	t := &v1alpha1.Task{}
-	err := r.Client.Get(ctx, req.NamespacedName, t)
+	err := r.client.Get(ctx, req.NamespacedName, t)
 	if err != nil {
-		klog.Error("get task error: ", err)
-		return reconcile.Result{}, err
+		if client.IgnoreNotFound(err) != nil {
+			klog.Error("get task error: ", err)
+			return reconcile.Result{}, err
+		}
+		// 如果未找到的错误，不再进入调协
+		return reconcile.Result{}, nil
 	}
 
-	// 处理调协pod
-	podBuilder := builder.NewPodBuilder(t, r.Client)
-	err = podBuilder.Build(ctx)
+	// 调协 task flow
+	err = r.deployTaskFlow(ctx, t)
 	if err != nil {
-		klog.Error("create pod error: ", err)
+		klog.Error("deploy task flow err: ", err)
 		return reconcile.Result{}, err
 	}
-
-	// 法二：可以使用生成的client端
-	//task, err := r.ApiV1alpha1().Tasks(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
-	//if err!=nil{
-	//	return reconcile.Result{}, err
-	//}
-
-	klog.Info("task: ", t)
+	klog.Info("successful reconcile")
 
 	return reconcile.Result{}, nil
 
-}
-
-// InjectClient 框架要注入clientSet
-func (r *TaskController) InjectClient(c client.Client) error {
-	r.Client = c
-	return nil
 }
 
 func (r *TaskController) OnUpdatePodHandler(event event.UpdateEvent, limitingInterface workqueue.RateLimitingInterface) {
@@ -67,13 +57,12 @@ func (r *TaskController) OnUpdatePodHandler(event event.UpdateEvent, limitingInt
 		if ref.Kind == v1alpha1.TaskKind && ref.APIVersion == v1alpha1.TaskApiVersion {
 			// 重新放入Reconcile调协方法
 			limitingInterface.Add(reconcile.Request{
-				types.NamespacedName{
+				NamespacedName: types.NamespacedName{
 					Name: ref.Name, Namespace: event.ObjectNew.GetNamespace(),
 				},
 			})
 		}
 	}
-
 }
 
 func (r *TaskController) OnDeletePodHandler(event event.DeleteEvent, limitingInterface workqueue.RateLimitingInterface) {

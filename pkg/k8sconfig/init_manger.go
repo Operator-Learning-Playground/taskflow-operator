@@ -3,6 +3,7 @@ package k8sconfig
 import (
 	taskv1alpha1 "github.com/myoperator/cicdoperator/pkg/apis/task/v1alpha1"
 	"github.com/myoperator/cicdoperator/pkg/controller"
+	builder2 "github.com/myoperator/cicdoperator/pkg/image"
 	corev1 "k8s.io/api/core/v1"
 	"log"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -13,7 +14,6 @@ import (
 
 	"os"
 
-	"github.com/myoperator/cicdoperator/pkg/client/clientset/versioned"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
@@ -25,7 +25,7 @@ func InitManager() {
 	// 1. 初始化管理器
 	mgr, err := manager.New(K8sRestConfig(),
 		manager.Options{
-			Logger: logf.Log.WithName("cicd_task"),
+			Logger: logf.Log.WithName("task-flow operator"),
 		})
 	if err != nil {
 		log.Fatal("创建管理器失败:", err.Error())
@@ -38,14 +38,16 @@ func InitManager() {
 		os.Exit(1)
 	}
 
-	// 3. 初始化使用code-generator
-	taskClient := versioned.NewForConfigOrDie(K8sRestConfig())
+	// 3. 初始化使用 code-generator 生成器的 client 示例
+	//taskClient := versioned.NewForConfigOrDie(K8sRestConfig())
 
 	// 4. 初始化 controller
 	taskController := controller.NewTaskController(
-		mgr.GetEventRecorderFor("cicd_task"),
-		taskClient,
+		mgr.GetEventRecorderFor("task-flow operator"),
+		mgr.GetClient(),
+		builder2.NewImageManager(100),
 	)
+
 	// 5. 定义controller的管理对象等工作
 	if err = builder.ControllerManagedBy(mgr).
 		For(&taskv1alpha1.Task{}).

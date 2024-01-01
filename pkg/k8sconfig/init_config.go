@@ -31,6 +31,5 @@ func K8sRestConfig() *rest.Config {
 	if err != nil {
 		klog.Fatal("parse config outside cluster err: ", err)
 	}
-
 	return config
 }
