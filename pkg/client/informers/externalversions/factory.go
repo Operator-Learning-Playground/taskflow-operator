@@ -23,9 +23,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/myoperator/cicdoperator/pkg/client/clientset/versioned"
-	internalinterfaces "github.com/myoperator/cicdoperator/pkg/client/informers/externalversions/internalinterfaces"
-	task "github.com/myoperator/cicdoperator/pkg/client/informers/externalversions/task"
+	versioned "github.com/myoperator/taskflowoperator/pkg/client/clientset/versioned"
+	internalinterfaces "github.com/myoperator/taskflowoperator/pkg/client/informers/externalversions/internalinterfaces"
+	task "github.com/myoperator/taskflowoperator/pkg/client/informers/externalversions/task"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

@@ -22,8 +22,8 @@ import (
 	"context"
 	"time"
 
-	v1alpha1 "github.com/myoperator/cicdoperator/pkg/apis/task/v1alpha1"
-	scheme "github.com/myoperator/cicdoperator/pkg/client/clientset/versioned/scheme"
+	v1alpha1 "github.com/myoperator/taskflowoperator/pkg/apis/task/v1alpha1"
+	scheme "github.com/myoperator/taskflowoperator/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -40,6 +40,7 @@ type TasksGetter interface {
 type TaskInterface interface {
 	Create(ctx context.Context, task *v1alpha1.Task, opts v1.CreateOptions) (*v1alpha1.Task, error)
 	Update(ctx context.Context, task *v1alpha1.Task, opts v1.UpdateOptions) (*v1alpha1.Task, error)
+	UpdateStatus(ctx context.Context, task *v1alpha1.Task, opts v1.UpdateOptions) (*v1alpha1.Task, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.Task, error)
@@ -128,6 +129,22 @@ func (c *tasks) Update(ctx context.Context, task *v1alpha1.Task, opts v1.UpdateO
 		Namespace(c.ns).
 		Resource("tasks").
 		Name(task.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Body(task).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *tasks) UpdateStatus(ctx context.Context, task *v1alpha1.Task, opts v1.UpdateOptions) (result *v1alpha1.Task, err error) {
+	result = &v1alpha1.Task{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("tasks").
+		Name(task.Name).
+		SubResource("status").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(task).
 		Do(ctx).

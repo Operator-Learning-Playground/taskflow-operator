@@ -1,7 +1,7 @@
 package k8sconfig
 
 import (
-	"github.com/myoperator/cicdoperator/pkg/common"
+	"github.com/myoperator/taskflowoperator/pkg/common"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"

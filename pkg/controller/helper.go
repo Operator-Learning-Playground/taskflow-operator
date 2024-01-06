@@ -4,15 +4,16 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/myoperator/cicdoperator/pkg/apis/task/v1alpha1"
-	"github.com/myoperator/cicdoperator/pkg/common"
-	"github.com/myoperator/cicdoperator/pkg/image"
+	"github.com/myoperator/taskflowoperator/pkg/apis/task/v1alpha1"
+	"github.com/myoperator/taskflowoperator/pkg/common"
+	"github.com/myoperator/taskflowoperator/pkg/image"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // setInitContainer 设置 InitContainer
@@ -76,6 +77,12 @@ const (
 	AnnotationTaskOrderKey       = "taskflowoperaotr/taskOrder"    // annotation
 	AnnotationTaskOrderInitValue = "0"                             // 初始 step 标识
 	AnnotationExitOrder          = "-1"                            // 退出 step 标识
+)
+
+const (
+	TaskStatusSuccess = "Successful"
+	TaskStatusRunning = "Running"
+	TaskStatusFailed  = "Failure"
 )
 
 // setPodMeta 设置 Pod 信息
@@ -225,22 +232,43 @@ func (r *TaskController) deployTaskFlow(ctx context.Context, task *v1alpha1.Task
 	getPod, err := r.getChildPod(task)
 	// 代表 Pod 已被创建，代表 taskFlow 正在执行
 	if err == nil {
+		klog.Info("pod status: ", getPod.Status.Phase)
+		klog.Info("annotation order:  ", getPod.Annotations[AnnotationTaskOrderKey])
 		if getPod.Status.Phase == v1.PodRunning {
 			// 如果为起始状态，先把 annotation 设置为1，让流水线可以执行，并更新
 			if getPod.Annotations[AnnotationTaskOrderKey] == AnnotationTaskOrderInitValue {
 				getPod.Annotations[AnnotationTaskOrderKey] = "1"
 				r.event.Event(task, v1.EventTypeNormal, "TaskFlow Start", "TaskFlow start to run step 1 container")
-				return r.client.Update(ctx, getPod)
+				err = r.client.Update(ctx, getPod)
+				if err != nil {
+					return err
+				}
+				// task start time
+				task.Status.StartAt = time.Now().Format("2006-01-02 15:04:05")
+				task.Status.Status = TaskStatusRunning
+				return r.client.Status().Update(ctx, task)
 			} else {
 				// 如果是其他状态，则调用forward方法前进
 				if err := r.forward(ctx, getPod, task); err != nil {
 					return err
 				}
 			}
-		}
-		klog.Info("pod status: ", getPod.Status.Phase)
-		klog.Info("annotation order:  ", getPod.Annotations[AnnotationTaskOrderKey])
+		} else if getPod.Status.Phase == v1.PodSucceeded {
+			r.event.Eventf(task, v1.EventTypeNormal, "TaskFlow Completed", "TaskFlow completed successfully")
+			task.Status.Status = TaskStatusSuccess
+			st, err := time.Parse("2006-01-02 15:04:05", task.Status.StartAt)
+			if err != nil {
+				return err
+			}
 
+			end := time.Now().Format("2006-01-02 15:04:05")
+			et, err := time.Parse("2006-01-02 15:04:05", end)
+			if err != nil {
+				return err
+			}
+			task.Status.Duration = et.Sub(st).String()
+			return r.client.Status().Update(ctx, task)
+		}
 		return nil
 	}
 
@@ -281,14 +309,26 @@ func (r *TaskController) deployTaskFlow(ctx context.Context, task *v1alpha1.Task
 func (r *TaskController) forward(ctx context.Context, pod *v1.Pod, task *v1alpha1.Task) error {
 	// Pod 状态 Succeeded 代表整个 Pod 执行完毕
 	if pod.Status.Phase == v1.PodSucceeded {
-		r.event.Eventf(task, v1.EventTypeNormal, "TaskFlow Completed", "TaskFlow completed successfully")
 		return nil
 	}
 
 	// AnnotationTaskOrderKey = "-1" 表示流程有错误，直接退出
 	if pod.Annotations[AnnotationTaskOrderKey] == AnnotationExitOrder {
+		// 触发 event 事件
 		r.event.Eventf(task, v1.EventTypeWarning, "TaskFlow Exited", "TaskFlow exit")
-		return nil
+		// 修改 task status
+		task.Status.Status = TaskStatusFailed
+		st, err := time.Parse("2006-01-02 15:04:05", task.Status.StartAt)
+		if err != nil {
+			return err
+		}
+		end := time.Now().Format("2006-01-02 15:04:05")
+		et, err := time.Parse("2006-01-02 15:04:05", end)
+		if err != nil {
+			return err
+		}
+		task.Status.Duration = et.Sub(st).String()
+		return r.client.Status().Update(ctx, task)
 	}
 
 	order, err := strconv.Atoi(pod.Annotations[AnnotationTaskOrderKey])
@@ -296,7 +336,8 @@ func (r *TaskController) forward(ctx context.Context, pod *v1.Pod, task *v1alpha
 		klog.Error("AnnotationTaskOrderKey err: ", err)
 		return err
 	}
-	// 容器长度相等，代表已经到了最后一个
+
+	// 容器长度相等，代表执行到最后
 	if order == len(pod.Spec.Containers) {
 		return nil
 	}
@@ -314,8 +355,7 @@ func (r *TaskController) forward(ctx context.Context, pod *v1.Pod, task *v1alpha
 			r.event.Eventf(task, v1.EventTypeWarning, "TaskFlow Failed", "TaskFlow failed to run step %v container", order)
 			pod.Annotations[AnnotationTaskOrderKey] = AnnotationExitOrder
 			return r.client.Update(ctx, pod)
-			//pod.Status.Phase=v1.PodFailed
-			//return pb.Client.Status().Update(ctx,pod)
+
 		}
 	}
 

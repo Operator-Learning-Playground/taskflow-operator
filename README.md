@@ -12,7 +12,7 @@ metadata:
 spec:
   # 设置多个 step 步骤，会按照填入的 container 顺序执行
   steps:
-    # 每项都是一个 container 对象
+    # 每项都是一个 container 对象，每个 container 都会顺序执行
     - name: step1
       image: busybox:1.28
       command: [ "sh","-c" ]
@@ -23,12 +23,27 @@ spec:
       args: [ "echo step2" ]
     - name: step3
       image: devopscube/kubernetes-job-demo:latest
-      args: [ "100" ]
+      args: [ "10" ]
 ```
 
 
 ### 项目功能
 1. 支持任务中的 container 顺序执行
+2. 查看任务流状态
+```bash
+[root@VM-0-16-centos yaml]# kubectl get tasks.api.practice.com
+NAME                          STATUS       START                 DURATION   AGE
+example-taskflow              Successful   2024-01-06 22:19:24   31s        80s
+example-taskflow-error-test   Running      2024-01-06 22:20:36              6s
+[root@VM-0-16-centos yaml]# kubectl get tasks.api.practice.com
+NAME                          STATUS       START                 DURATION   AGE
+example-taskflow              Successful   2024-01-06 22:19:24   31s        84s
+example-taskflow-error-test   Failure      2024-01-06 22:20:36   6s         10s
+[root@VM-0-16-centos yaml]# kubectl get tasks.api.practice.com
+NAME                          STATUS       START                 DURATION   AGE
+example-taskflow              Successful   2024-01-06 22:19:24   31s        86s
+example-taskflow-error-test   Failure      2024-01-06 22:20:36   6s         12s
+```
 
 ### 项目部署与使用
 1. 打成镜像或是使用编译二进制。
@@ -131,6 +146,6 @@ I0101 05:17:12.141048       1 helper.go:242] annotation order:  2
 I0101 05:17:12.141057       1 task_controller.go:49] successful reconcile
 I0101 05:17:12.141302       1 helper.go:241] pod status: Running
 ```
-
+6. 使用 资源对象
 
 ### RoadMap

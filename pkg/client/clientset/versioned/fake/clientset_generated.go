@@ -19,9 +19,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "github.com/myoperator/cicdoperator/pkg/client/clientset/versioned"
-	apiv1alpha1 "github.com/myoperator/cicdoperator/pkg/client/clientset/versioned/typed/task/v1alpha1"
-	fakeapiv1alpha1 "github.com/myoperator/cicdoperator/pkg/client/clientset/versioned/typed/task/v1alpha1/fake"
+	clientset "github.com/myoperator/taskflowoperator/pkg/client/clientset/versioned"
+	apiv1alpha1 "github.com/myoperator/taskflowoperator/pkg/client/clientset/versioned/typed/task/v1alpha1"
+	fakeapiv1alpha1 "github.com/myoperator/taskflowoperator/pkg/client/clientset/versioned/typed/task/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -74,7 +74,10 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
-var _ clientset.Interface = &Clientset{}
+var (
+	_ clientset.Interface = &Clientset{}
+	_ testing.FakeClient  = &Clientset{}
+)
 
 // ApiV1alpha1 retrieves the ApiV1alpha1Client
 func (c *Clientset) ApiV1alpha1() apiv1alpha1.ApiV1alpha1Interface {

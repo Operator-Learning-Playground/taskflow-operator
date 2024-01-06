@@ -19,8 +19,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/myoperator/cicdoperator/pkg/apis/task/v1alpha1"
-	"github.com/myoperator/cicdoperator/pkg/client/clientset/versioned/scheme"
+	v1alpha1 "github.com/myoperator/taskflowoperator/pkg/apis/task/v1alpha1"
+	"github.com/myoperator/taskflowoperator/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

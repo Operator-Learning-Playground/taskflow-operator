@@ -17,7 +17,7 @@ import (
 // ValidateFlags 检查参数
 func ValidateFlags() {
 	if encodeFile == "" {
-		if waitFile == "" || out == "" || command == "" {
+		if waitFile == "" || out == "" {
 			log.Println("error input param...")
 			os.Exit(1)
 		}
@@ -119,6 +119,9 @@ func ExecCmdAndArgs(args []string) {
 	cmd := ""
 	// 非加密文件模式
 	if encodeFile == "" {
+		if command == "" {
+			command = "sh"
+		}
 		cmdList := strings.Split(command, " ") // 如 sh -c 这种字符串，要切割,取出第一个作为command
 		cmd = cmdList[0]                       //肯定有值 ，所以不用判断
 		if len(cmdList) > 1 {                  //把剩余的合并到argList 前面

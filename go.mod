@@ -1,4 +1,4 @@
-module github.com/myoperator/cicdoperator
+module github.com/myoperator/taskflowoperator
 
 go 1.18
 

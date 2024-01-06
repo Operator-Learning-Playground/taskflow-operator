@@ -14,4 +14,4 @@ spec:
       args: [ "echo step2" ]
     - name: step3
       image: devopscube/kubernetes-job-demo:latest
-      args: [ "100" ]
+      args: [ "10" ]

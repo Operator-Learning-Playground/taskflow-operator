@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	apiv1alpha1 "github.com/myoperator/cicdoperator/pkg/apis/task/v1alpha1"
+	apiv1alpha1 "github.com/myoperator/taskflowoperator/pkg/apis/task/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

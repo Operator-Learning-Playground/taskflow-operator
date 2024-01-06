@@ -19,8 +19,8 @@ limitations under the License.
 package task
 
 import (
-	internalinterfaces "github.com/myoperator/cicdoperator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/myoperator/cicdoperator/pkg/client/informers/externalversions/task/v1alpha1"
+	internalinterfaces "github.com/myoperator/taskflowoperator/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/myoperator/taskflowoperator/pkg/client/informers/externalversions/task/v1alpha1"
 )
 
 // Interface provides access to each of this group's versions.

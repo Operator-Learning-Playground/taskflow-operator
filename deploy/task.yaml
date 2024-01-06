@@ -13,6 +13,19 @@ spec:
       served: true
       #是否是存储版本
       storage: true
+      additionalPrinterColumns:
+        - name: Status
+          type: string
+          jsonPath: .status.status
+        - name: Start
+          type: string
+          jsonPath: .status.startAt
+        - name: Duration
+          type: string
+          jsonPath: .status.duration
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
       schema:
         openAPIV3Schema:
           type: object

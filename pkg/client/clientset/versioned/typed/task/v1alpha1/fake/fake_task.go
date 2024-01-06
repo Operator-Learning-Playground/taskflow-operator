@@ -21,7 +21,7 @@ package fake
 import (
 	"context"
 
-	v1alpha1 "github.com/myoperator/cicdoperator/pkg/apis/task/v1alpha1"
+	v1alpha1 "github.com/myoperator/taskflowoperator/pkg/apis/task/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -95,6 +95,18 @@ func (c *FakeTasks) Create(ctx context.Context, task *v1alpha1.Task, opts v1.Cre
 func (c *FakeTasks) Update(ctx context.Context, task *v1alpha1.Task, opts v1.UpdateOptions) (result *v1alpha1.Task, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(tasksResource, c.ns, task), &v1alpha1.Task{})
+
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*v1alpha1.Task), err
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *FakeTasks) UpdateStatus(ctx context.Context, task *v1alpha1.Task, opts v1.UpdateOptions) (*v1alpha1.Task, error) {
+	obj, err := c.Fake.
+		Invokes(testing.NewUpdateSubresourceAction(tasksResource, "status", c.ns, task), &v1alpha1.Task{})
 
 	if obj == nil {
 		return nil, err

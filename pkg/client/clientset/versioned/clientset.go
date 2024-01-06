@@ -21,7 +21,7 @@ package versioned
 import (
 	"fmt"
 
-	apiv1alpha1 "github.com/myoperator/cicdoperator/pkg/client/clientset/versioned/typed/task/v1alpha1"
+	apiv1alpha1 "github.com/myoperator/taskflowoperator/pkg/client/clientset/versioned/typed/task/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

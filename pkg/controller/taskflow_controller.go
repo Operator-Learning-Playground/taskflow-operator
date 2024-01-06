@@ -2,8 +2,8 @@ package controller
 
 import (
 	"context"
-	"github.com/myoperator/cicdoperator/pkg/apis/task/v1alpha1"
-	"github.com/myoperator/cicdoperator/pkg/image"
+	"github.com/myoperator/taskflowoperator/pkg/apis/task/v1alpha1"
+	"github.com/myoperator/taskflowoperator/pkg/image"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"

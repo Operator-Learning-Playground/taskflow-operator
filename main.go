@@ -1,10 +1,10 @@
 package main
 
 import (
-	taskv1alpha1 "github.com/myoperator/cicdoperator/pkg/apis/task/v1alpha1"
-	"github.com/myoperator/cicdoperator/pkg/controller"
-	builder2 "github.com/myoperator/cicdoperator/pkg/image"
-	"github.com/myoperator/cicdoperator/pkg/k8sconfig"
+	taskv1alpha1 "github.com/myoperator/taskflowoperator/pkg/apis/task/v1alpha1"
+	"github.com/myoperator/taskflowoperator/pkg/controller"
+	builder2 "github.com/myoperator/taskflowoperator/pkg/image"
+	"github.com/myoperator/taskflowoperator/pkg/k8sconfig"
 	corev1 "k8s.io/api/core/v1"
 	_ "k8s.io/code-generator"
 	"log"
