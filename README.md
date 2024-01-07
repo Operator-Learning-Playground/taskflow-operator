@@ -4,6 +4,9 @@
 设计背景：k8s 当中原生的 Pod 资源对象执行 container 容器时，并没有相互依赖的编排特性(ex: 容器 a 完成后 -> 再执行容器 b ...)。
 本项目在此需求上，基于 k8s 的扩展功能，实现 Task 的自定义资源控制器，实现一个能顺序执行容器的 operator 应用。
 
+
+![](https://github.com/Operator-Learning-Playground/taskflow-operator/blob/main/image/%E6%97%A0%E6%A0%87%E9%A2%98-2023-08-10-2343.png?raw=true)
+
 ```yaml
 apiVersion: api.practice.com/v1alpha1
 kind: Task
